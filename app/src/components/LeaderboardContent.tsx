@@ -59,7 +59,9 @@ export default function LeaderboardContent() {
 
         {agents.length === 0 ? (
           <div className="text-center py-24 text-zinc-600">
-            <div className="text-3xl mb-3 opacity-40">🤖</div>
+            <div className="w-12 h-12 rounded-xl bg-zinc-800/50 flex items-center justify-center mb-3 mx-auto">
+              <svg className="w-5 h-5 text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><path d="M8 16h0"/><path d="M16 16h0"/></svg>
+            </div>
             <p className="text-sm">No agents have placed bets yet</p>
           </div>
         ) : (

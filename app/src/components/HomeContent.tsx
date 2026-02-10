@@ -6,6 +6,7 @@ import { Market, Protocol } from "@/lib/api";
 import MarketCard from "@/components/MarketCard";
 import StatsCard from "@/components/StatsCard";
 import { usePolling } from "@/hooks/usePolling";
+import { ChartIcon, CircleDotIcon, CoinsIcon, BotIcon } from "@/components/icons";
 
 function LastUpdated({ timestamp }: { timestamp: number | null }) {
   const [, setTick] = useState(0);
@@ -96,10 +97,10 @@ export default function HomeContent() {
           transition={{ duration: 0.3 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10"
         >
-          <StatsCard icon="📊" label="Total Markets" value={protocol?.marketCount ?? "—"} accent="cyan" />
-          <StatsCard icon="🟢" label="Open Markets" value={openMarkets} accent="violet" />
-          <StatsCard icon="◎" label="Total Volume" value={protocol ? `${protocol.totalVolumeSol.toFixed(2)} SOL` : "—"} accent="pink" />
-          <StatsCard icon="🤖" label="Total Bets" value={totalBettors} accent="gold" />
+          <StatsCard icon={<ChartIcon />} label="Total Markets" value={protocol?.marketCount ?? "—"} accent="cyan" />
+          <StatsCard icon={<CircleDotIcon />} label="Open Markets" value={openMarkets} accent="violet" />
+          <StatsCard icon={<CoinsIcon />} label="Total Volume" value={protocol ? `${protocol.totalVolumeSol.toFixed(2)} SOL` : "—"} accent="pink" />
+          <StatsCard icon={<BotIcon />} label="Total Bets" value={totalBettors} accent="gold" />
         </motion.div>
 
         {/* Filters */}
@@ -129,7 +130,9 @@ export default function HomeContent() {
           </div>
         ) : filteredMarkets.length === 0 ? (
           <div className="text-center py-24 text-zinc-600">
-            <div className="text-3xl mb-3 opacity-40">🔮</div>
+            <div className="w-12 h-12 rounded-xl bg-zinc-800/50 flex items-center justify-center mb-3 mx-auto">
+              <ChartIcon className="w-5 h-5 text-zinc-600" />
+            </div>
             <p className="text-sm">No markets found</p>
           </div>
         ) : (
