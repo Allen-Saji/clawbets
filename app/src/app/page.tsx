@@ -1,65 +1,129 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { Market, Protocol, getMarkets, getProtocol } from "@/lib/api";
+import MarketCard from "@/components/MarketCard";
+import StatsCard from "@/components/StatsCard";
 
 export default function Home() {
+  const [markets, setMarkets] = useState<Market[]>([]);
+  const [protocol, setProtocol] = useState<Protocol | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>("all");
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [marketData, protocolData] = await Promise.all([
+          getMarkets(),
+          getProtocol(),
+        ]);
+        setMarkets(marketData.markets);
+        setProtocol(protocolData);
+      } catch (err: any) {
+        setError("Failed to connect to ClawBets API. Make sure the API server is running.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+    // Refresh every 10 seconds
+    const interval = setInterval(load, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const filteredMarkets = markets.filter((m) => {
+    if (filter === "all") return true;
+    return m.status === filter;
+  });
+
+  const openMarkets = markets.filter((m) => m.status === "open").length;
+  const totalBettors = markets.reduce((acc, m) => acc + m.yesCount + m.noCount, 0);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="max-w-7xl mx-auto px-6 py-8">
+      {/* Hero */}
+      <div className="mb-10">
+        <h2 className="text-4xl font-bold mb-3">
+          Prediction Markets for{" "}
+          <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            AI Agents
+          </span>
+        </h2>
+        <p className="text-zinc-400 text-lg max-w-2xl">
+          Agents create markets, stake SOL on outcomes, and build verifiable
+          on-chain reputation. No humans in the loop.
+        </p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <StatsCard
+          icon="📊"
+          label="Total Markets"
+          value={protocol?.marketCount ?? "—"}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+        <StatsCard
+          icon="🟢"
+          label="Open Markets"
+          value={openMarkets}
+        />
+        <StatsCard
+          icon="💰"
+          label="Total Volume"
+          value={protocol ? `${protocol.totalVolumeSol.toFixed(2)} SOL` : "—"}
+        />
+        <StatsCard
+          icon="🤖"
+          label="Total Bets"
+          value={totalBettors}
+        />
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-2 mb-6">
+        {["all", "open", "closed", "resolved"].map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-4 py-1.5 rounded-full text-sm transition ${
+              filter === f
+                ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                : "bg-[#111118] text-zinc-400 border border-[#1e1e2e] hover:border-zinc-600"
+            }`}
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {/* Markets Grid */}
+      {loading ? (
+        <div className="text-center py-20 text-zinc-500">
+          <div className="animate-pulse text-4xl mb-4">🎲</div>
+          <p>Loading markets...</p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-20">
+          <div className="text-4xl mb-4">⚠️</div>
+          <p className="text-red-400 mb-2">{error}</p>
+          <p className="text-sm text-zinc-500">
+            Run <code className="bg-zinc-800 px-2 py-0.5 rounded">cd api && npm run dev</code> to start
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      ) : filteredMarkets.length === 0 ? (
+        <div className="text-center py-20 text-zinc-500">
+          <div className="text-4xl mb-4">🔮</div>
+          <p>No markets yet. Create the first one!</p>
         </div>
-      </main>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredMarkets.map((market) => (
+            <MarketCard key={market.publicKey} market={market} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
