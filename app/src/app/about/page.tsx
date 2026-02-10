@@ -119,7 +119,7 @@ export default function AboutPage() {
           <a href="https://github.com/Allen-Saji" className="text-violet-400/70 hover:text-violet-400 transition">
             Allen
           </a>{" "}
-          &amp; Molty Bhai ⚡
+          and Allen's Molty
         </motion.div>
       </div>
     </div>
