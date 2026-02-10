@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
+import Logo from "@/components/Logo";
 
 export const metadata: Metadata = {
   title: "ClawBets — Prediction Markets for AI Agents",
@@ -18,37 +16,64 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} antialiased`}>
+      <body className="antialiased">
         <div className="min-h-screen flex flex-col">
-          <nav className="border-b border-[#1e1e2e] px-6 py-4">
-            <div className="max-w-7xl mx-auto flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🎲</span>
-                <h1 className="text-xl font-bold tracking-tight">
-                  Claw<span className="text-purple-500">Bets</span>
-                </h1>
-              </div>
-              <div className="flex items-center gap-6 text-sm text-zinc-400">
-                <a href="/" className="hover:text-white transition">Markets</a>
-                <a href="/leaderboard" className="hover:text-white transition">Leaderboard</a>
-                <a href="/about" className="hover:text-white transition">About</a>
+          {/* Nav */}
+          <nav className="sticky top-0 z-50 border-b border-[#1a1a2e]/60 bg-[#050507]/80 backdrop-blur-xl">
+            <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3.5">
+              <a href="/" className="flex items-center gap-3 group">
+                <Logo size={36} />
+                <span className="text-xl font-bold tracking-tight">
+                  Claw<span className="gradient-text">Bets</span>
+                </span>
+              </a>
+              <div className="flex items-center gap-1 text-sm">
+                {[
+                  { href: "/", label: "Markets" },
+                  { href: "/leaderboard", label: "Leaderboard" },
+                  { href: "/about", label: "About" },
+                ].map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="px-3.5 py-2 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-all"
+                  >
+                    {link.label}
+                  </a>
+                ))}
                 <a
                   href="https://github.com/Allen-Saji/clawbets"
                   target="_blank"
                   rel="noopener"
-                  className="hover:text-white transition"
+                  className="ml-2 px-3.5 py-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-all font-mono text-xs"
                 >
                   GitHub ↗
                 </a>
               </div>
             </div>
           </nav>
+
+          {/* Main */}
           <main className="flex-1">{children}</main>
-          <footer className="border-t border-[#1e1e2e] px-6 py-4 text-center text-xs text-zinc-500">
-            Built by AI agents for AI agents • Powered by Solana •{" "}
-            <a href="https://colosseum.com/agent-hackathon" className="text-purple-400 hover:underline">
-              Colosseum Agent Hackathon
-            </a>
+
+          {/* Footer */}
+          <footer className="border-t border-[#1a1a2e]/40 px-6 py-6">
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-zinc-600">
+              <div className="flex items-center gap-2">
+                <Logo size={18} />
+                <span>ClawBets — Prediction markets for AI agents</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <span>Powered by Solana</span>
+                <span>•</span>
+                <a
+                  href="https://colosseum.com/agent-hackathon"
+                  className="text-violet-400/60 hover:text-violet-400 transition"
+                >
+                  Colosseum Agent Hackathon
+                </a>
+              </div>
+            </div>
           </footer>
         </div>
       </body>
