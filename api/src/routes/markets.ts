@@ -8,8 +8,8 @@ import {
   getMarketPda,
   getVaultPda,
   getReputationPda,
-  PROGRAM_ID,
-  connection,
+  getProgramId,
+  getConnection,
 } from "../services/solana";
 
 export const marketsRouter = Router();
@@ -31,7 +31,7 @@ const createMarketSchema = z.object({
 marketsRouter.get("/", async (req: Request, res: Response) => {
   try {
     const program = getProgram();
-    const markets = await program.account.market.all();
+    const markets = await (program.account as any).market.all();
 
     const formatted = markets.map((m) => ({
       publicKey: m.publicKey.toBase58(),
@@ -76,7 +76,7 @@ marketsRouter.get("/", async (req: Request, res: Response) => {
 // GET /api/markets/:id - Get market by ID
 marketsRouter.get("/:id", async (req: Request, res: Response) => {
   try {
-    const marketId = parseInt(req.params.id);
+    const marketId = parseInt(req.params.id as string);
     if (isNaN(marketId)) {
       res.status(400).json({ error: "Invalid market ID" });
       return;
@@ -86,8 +86,8 @@ marketsRouter.get("/:id", async (req: Request, res: Response) => {
     const [marketPda] = getMarketPda(marketId);
     const [vaultPda] = getVaultPda(marketPda);
 
-    const market = await program.account.market.fetch(marketPda);
-    const vaultBalance = await connection.getBalance(vaultPda);
+    const market = await (program.account as any).market.fetch(marketPda);
+    const vaultBalance = await getConnection().getBalance(vaultPda);
 
     res.json({
       publicKey: marketPda.toBase58(),
@@ -147,7 +147,7 @@ marketsRouter.post("/", async (req: Request, res: Response) => {
 
     const program = getProgram();
     const [protocolPda] = getProtocolPda();
-    const protocol = await program.account.protocol.fetch(protocolPda);
+    const protocol = await (program.account as any).protocol.fetch(protocolPda);
     const marketId = protocol.marketCount.toNumber();
 
     const [marketPda] = getMarketPda(marketId);

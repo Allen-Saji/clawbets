@@ -1,17 +1,17 @@
 import { Router, Request, Response } from "express";
 import { PublicKey } from "@solana/web3.js";
-import { getProgram, getReputationPda, PROGRAM_ID } from "../services/solana";
+import { getProgram, getReputationPda, getProgramId } from "../services/solana";
 
 export const reputationRouter = Router();
 
 // GET /api/reputation/:pubkey - Get agent reputation
 reputationRouter.get("/:pubkey", async (req: Request, res: Response) => {
   try {
-    const agentPubkey = new PublicKey(req.params.pubkey);
+    const agentPubkey = new PublicKey(req.params.pubkey as string);
     const program = getProgram();
     const [reputationPda] = getReputationPda(agentPubkey);
 
-    const rep = await program.account.agentReputation.fetch(reputationPda);
+    const rep = await (program.account as any).agentReputation.fetch(reputationPda);
 
     res.json({
       agent: rep.agent.toBase58(),
@@ -39,7 +39,7 @@ reputationRouter.get("/:pubkey", async (req: Request, res: Response) => {
 reputationRouter.get("/", async (_req: Request, res: Response) => {
   try {
     const program = getProgram();
-    const allReps = await program.account.agentReputation.all();
+    const allReps = await (program.account as any).agentReputation.all();
 
     const formatted = allReps
       .map((r) => ({

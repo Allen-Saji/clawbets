@@ -9,7 +9,7 @@ import {
   getBetPda,
   getReputationPda,
   getProtocolPda,
-  PROGRAM_ID,
+  getProgramId,
 } from "../services/solana";
 
 export const betsRouter = Router();
@@ -23,7 +23,7 @@ const placeBetSchema = z.object({
 // GET /api/bets/market/:marketId - List bets for a market
 betsRouter.get("/market/:marketId", async (req: Request, res: Response) => {
   try {
-    const marketId = parseInt(req.params.marketId);
+    const marketId = parseInt(req.params.marketId as string);
     if (isNaN(marketId)) {
       res.status(400).json({ error: "Invalid market ID" });
       return;
@@ -33,7 +33,7 @@ betsRouter.get("/market/:marketId", async (req: Request, res: Response) => {
     const [marketPda] = getMarketPda(marketId);
 
     // Fetch all bets filtering by market
-    const bets = await program.account.bet.all([
+    const bets = await (program.account as any).bet.all([
       {
         memcmp: {
           offset: 8 + 32, // after discriminator + bettor pubkey
@@ -63,10 +63,10 @@ betsRouter.get("/market/:marketId", async (req: Request, res: Response) => {
 // GET /api/bets/agent/:pubkey - List bets by agent
 betsRouter.get("/agent/:pubkey", async (req: Request, res: Response) => {
   try {
-    const agentPubkey = new PublicKey(req.params.pubkey);
+    const agentPubkey = new PublicKey(req.params.pubkey as string);
     const program = getProgram();
 
-    const bets = await program.account.bet.all([
+    const bets = await (program.account as any).bet.all([
       {
         memcmp: {
           offset: 8, // after discriminator

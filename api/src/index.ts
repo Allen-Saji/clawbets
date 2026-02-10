@@ -1,14 +1,17 @@
+import dotenv from "dotenv";
+import * as path from "path";
+
+// Load env BEFORE any other imports
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import dotenv from "dotenv";
 import { marketsRouter } from "./routes/markets";
 import { betsRouter } from "./routes/bets";
 import { reputationRouter } from "./routes/reputation";
 import { protocolRouter } from "./routes/protocol";
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,7 +26,7 @@ app.use(express.json());
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
@@ -50,6 +53,7 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 
 app.listen(PORT, () => {
   console.log(`🎲 ClawBets API running on port ${PORT}`);
+  console.log(`  RPC: ${process.env.SOLANA_RPC_URL || "http://localhost:8899"}`);
 });
 
 export default app;
