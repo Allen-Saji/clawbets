@@ -11,6 +11,8 @@ pub use instructions::resolve_market::*;
 pub use instructions::claim_winnings::*;
 pub use instructions::cancel_market::*;
 pub use instructions::reclaim_bet::*;
+pub use instructions::expire_market::*;
+pub use instructions::close_betting::*;
 
 declare_id!("3kBwjzUXtVeUshBWDD1Ls5PZPqQZgQUGNUTdP6jCqobb");
 
@@ -58,5 +60,13 @@ pub mod clawbets {
 
     pub fn reclaim_bet(ctx: Context<ReclaimBet>) -> Result<()> {
         instructions::reclaim_bet::handler(ctx)
+    }
+
+    pub fn expire_market(ctx: Context<ExpireMarket>) -> Result<()> {
+        instructions::expire_market::handler(ctx)
+    }
+
+    pub fn close_betting(ctx: Context<CloseBetting>) -> Result<()> {
+        instructions::close_betting::handler(ctx)
     }
 }

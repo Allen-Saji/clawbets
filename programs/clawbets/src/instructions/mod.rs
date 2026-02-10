@@ -5,3 +5,5 @@ pub mod resolve_market;
 pub mod claim_winnings;
 pub mod cancel_market;
 pub mod reclaim_bet;
+pub mod expire_market;
+pub mod close_betting;
