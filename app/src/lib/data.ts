@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { getProgram, getProtocolPda, getProgramId, getRpcUrl, getMarketPda, getVaultPda, getConnection } from "./solana";
+import { getProgram, getProtocolPda, getProgramId, getMarketPda, getVaultPda, getConnection } from "./solana";
 
 // Server-side data functions — called directly by Server Components
 // No HTTP round-trip, uses Anchor program client directly
@@ -15,7 +15,6 @@ export const fetchProtocol = cache(async () => {
     totalVolume: protocol.totalVolume.toNumber(),
     totalVolumeSol: protocol.totalVolume.toNumber() / 1e9,
     programId: getProgramId().toBase58(),
-    rpcUrl: getRpcUrl(),
   };
 });
 

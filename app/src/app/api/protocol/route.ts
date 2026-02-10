@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProgram, getProtocolPda, getProgramId, getRpcUrl } from "@/lib/solana";
+import { getProgram, getProtocolPda, getProgramId } from "@/lib/solana";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,6 @@ export async function GET() {
       totalVolume: protocol.totalVolume.toNumber(),
       totalVolumeSol: protocol.totalVolume.toNumber() / 1e9,
       programId: getProgramId().toBase58(),
-      rpcUrl: getRpcUrl(),
     });
   } catch (err: any) {
     console.error("Error fetching protocol:", err.message);

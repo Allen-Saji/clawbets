@@ -12,3 +12,5 @@ api/node_modules/
 agent2-keypair.json
 agent3-keypair.json
 my-keypair.json
+agent2-keypair.json
+*.json.bak

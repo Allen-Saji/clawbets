@@ -14,7 +14,8 @@ pub struct ResolveMarket<'info> {
     )]
     pub market: Account<'info, Market>,
 
-    /// CHECK: Pyth oracle price feed account - validated in handler
+    /// CHECK: Pyth oracle price feed account - validated in handler.
+    /// Owner is verified to be a known Pyth program in the handler.
     pub oracle_feed: AccountInfo<'info>,
 }
 
@@ -43,6 +44,17 @@ pub fn handler(ctx: Context<ResolveMarket>) -> Result<()> {
     // Verify oracle feed matches
     require!(
         ctx.accounts.oracle_feed.key() == market.oracle_feed,
+        ClawBetsError::InvalidOracleData
+    );
+
+    // Verify oracle account is owned by a known Pyth program
+    // Pyth V2 mainnet: FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH
+    // Pyth V2 devnet: gSbePebfvPy7tRqimPoVecS2UsBvYv46ynrzWocc92s
+    let pyth_mainnet = "FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH".parse::<Pubkey>().unwrap();
+    let pyth_devnet = "gSbePebfvPy7tRqimPoVecS2UsBvYv46ynrzWocc92s".parse::<Pubkey>().unwrap();
+    require!(
+        *ctx.accounts.oracle_feed.owner == pyth_mainnet
+            || *ctx.accounts.oracle_feed.owner == pyth_devnet,
         ClawBetsError::InvalidOracleData
     );
 

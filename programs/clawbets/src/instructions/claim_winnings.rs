@@ -59,15 +59,15 @@ pub fn handler(ctx: Context<ClaimWinnings>) -> Result<()> {
     };
 
     // Winnings = bet_amount + (bet_amount / winning_pool) * losing_pool
-    // Use u128 to avoid overflow
+    // Use u128 to avoid overflow, with safe truncation check
+    let share_128 = (bet.amount as u128)
+        .checked_mul(losing_pool as u128)
+        .ok_or(ClawBetsError::Overflow)?
+        .checked_div(winning_pool as u128)
+        .ok_or(ClawBetsError::Overflow)?;
+    let share: u64 = u64::try_from(share_128).map_err(|_| ClawBetsError::Overflow)?;
     let winnings = bet.amount
-        .checked_add(
-            (bet.amount as u128)
-                .checked_mul(losing_pool as u128)
-                .ok_or(ClawBetsError::Overflow)?
-                .checked_div(winning_pool as u128)
-                .ok_or(ClawBetsError::Overflow)? as u64
-        )
+        .checked_add(share)
         .ok_or(ClawBetsError::Overflow)?;
 
     // Transfer from vault PDA to bettor

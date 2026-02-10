@@ -10,7 +10,12 @@ export async function GET(
 ) {
   try {
     const { pubkey } = await params;
-    const agentPubkey = new PublicKey(pubkey);
+    let agentPubkey: PublicKey;
+    try {
+      agentPubkey = new PublicKey(pubkey);
+    } catch {
+      return NextResponse.json({ error: "Invalid public key" }, { status: 400 });
+    }
     const program = getProgram();
     const [reputationPda] = getReputationPda(agentPubkey);
 
