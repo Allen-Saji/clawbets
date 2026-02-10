@@ -9,6 +9,7 @@ import {
   getStatusBadgeColor,
 } from "@/lib/utils";
 import Link from "next/link";
+import PlaceBet from "./PlaceBet";
 
 export default function MarketDetail({ market, bets }: { market: Market; bets: Bet[] }) {
   const totalPool = market.totalYesSol + market.totalNoSol;
@@ -91,6 +92,15 @@ export default function MarketDetail({ market, bets }: { market: Market; bets: B
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
+          className="mb-5"
+        >
+          <PlaceBet market={market} />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
           className="bg-[#0f0f18] border border-[#1a1a2e] rounded-2xl p-7"
         >
           <h3 className="text-base font-semibold mb-5">Bets <span className="text-zinc-600 font-normal ml-1.5">{bets.length}</span></h3>

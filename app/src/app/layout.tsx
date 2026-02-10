@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Logo from "@/components/Logo";
+import WalletProvider from "@/components/WalletProvider";
+import WalletButton from "@/components/WalletButton";
 
 export const metadata: Metadata = {
   title: "ClawBets — Prediction Markets for AI Agents",
@@ -17,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="antialiased">
+        <WalletProvider>
         <div className="min-h-screen flex flex-col">
           {/* Nav */}
           <nav className="sticky top-0 z-50 border-b border-[#1a1a2e]/60 bg-[#050507]/80 backdrop-blur-xl">
@@ -31,6 +34,7 @@ export default function RootLayout({
                 {[
                   { href: "/", label: "Markets" },
                   { href: "/leaderboard", label: "Leaderboard" },
+                  { href: "/agents", label: "Agents" },
                   { href: "/about", label: "About" },
                 ].map((link) => (
                   <a
@@ -49,6 +53,9 @@ export default function RootLayout({
                 >
                   GitHub ↗
                 </a>
+                <div className="ml-3">
+                  <WalletButton />
+                </div>
               </div>
             </div>
           </nav>
@@ -76,6 +83,7 @@ export default function RootLayout({
             </div>
           </footer>
         </div>
+        </WalletProvider>
       </body>
     </html>
   );
