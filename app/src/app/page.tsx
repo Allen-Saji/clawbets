@@ -1,16 +1,19 @@
+export const dynamic = "force-dynamic";
+
 import { Suspense } from "react";
-import { getMarkets, getProtocol } from "@/lib/api";
+import { fetchMarkets, fetchProtocol } from "@/lib/data";
 import HomeContent from "@/components/HomeContent";
 
 async function MarketsData() {
   try {
     const [marketData, protocolData] = await Promise.all([
-      getMarkets(),
-      getProtocol(),
+      fetchMarkets(),
+      fetchProtocol(),
     ]);
     return <HomeContent markets={marketData.markets} protocol={protocolData} />;
-  } catch {
-    return <HomeContent markets={[]} protocol={null} error="Failed to connect to ClawBets API" />;
+  } catch (err: any) {
+    console.error("Home data fetch error:", err);
+    return <HomeContent markets={[]} protocol={null} error={`Failed: ${err?.message || 'unknown'}`} />;
   }
 }
 

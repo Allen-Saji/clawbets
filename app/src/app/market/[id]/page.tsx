@@ -1,13 +1,13 @@
 import { Suspense } from "react";
-import { getMarket, getMarketBets } from "@/lib/api";
+import { fetchMarket, fetchMarketBets } from "@/lib/data";
 import MarketDetail from "@/components/MarketDetail";
 import Link from "next/link";
 
 async function MarketData({ id }: { id: number }) {
   try {
     const [market, betsData] = await Promise.all([
-      getMarket(id),
-      getMarketBets(id),
+      fetchMarket(id),
+      fetchMarketBets(id),
     ]);
     return <MarketDetail market={market} bets={betsData.bets} />;
   } catch {

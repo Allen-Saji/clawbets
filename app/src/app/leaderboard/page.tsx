@@ -1,10 +1,12 @@
+export const dynamic = "force-dynamic";
+
 import { Suspense } from "react";
-import { getLeaderboard } from "@/lib/api";
+import { fetchLeaderboard } from "@/lib/data";
 import LeaderboardContent from "@/components/LeaderboardContent";
 
 async function LeaderboardData() {
   try {
-    const data = await getLeaderboard();
+    const data = await fetchLeaderboard();
     return <LeaderboardContent agents={data.leaderboard} />;
   } catch {
     return <LeaderboardContent agents={[]} />;
