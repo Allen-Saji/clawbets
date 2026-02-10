@@ -9,7 +9,7 @@ import idl from "@/lib/clawbets-idl.json";
 
 const PROGRAM_ID = new PublicKey("3kBwjzUXtVeUshBWDD1Ls5PZPqQZgQUGNUTdP6jCqobb");
 
-export default function PlaceBet({ market }: { market: Market }) {
+export default function PlaceBet({ market, onBetPlaced }: { market: Market; onBetPlaced?: (bettor: string, position: boolean, amount: number) => void }) {
   const { publicKey, signTransaction, signAllTransactions } = useWallet();
   const { connection } = useConnection();
   const [position, setPosition] = useState<boolean>(true);
@@ -76,6 +76,7 @@ export default function PlaceBet({ market }: { market: Market }) {
         .rpc();
 
       setResult({ type: "success", msg: `Bet placed! Tx: ${tx.slice(0, 16)}...` });
+      onBetPlaced?.(publicKey.toBase58(), position, solAmount);
       setAmount("");
     } catch (err: any) {
       console.error("Place bet error:", err);

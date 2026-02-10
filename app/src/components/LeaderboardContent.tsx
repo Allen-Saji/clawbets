@@ -1,8 +1,10 @@
 "use client";
 
+import { useCallback } from "react";
 import { motion } from "framer-motion";
 import { AgentReputation } from "@/lib/api";
 import { truncateAddress } from "@/lib/utils";
+import { usePolling } from "@/hooks/usePolling";
 
 const getRankDisplay = (index: number) => {
   if (index === 0) return { emoji: "🥇", bg: "bg-amber-500/10 border-amber-500/15" };
@@ -17,7 +19,29 @@ const getAccuracyColor = (accuracy: number) => {
   return "text-rose-400";
 };
 
-export default function LeaderboardContent({ agents }: { agents: AgentReputation[] }) {
+export default function LeaderboardContent() {
+  const { data, loading } = usePolling<{ leaderboard: AgentReputation[]; count: number }>({
+    fetcher: useCallback(() => fetch("/api/reputation").then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); }), []),
+    interval: 15000,
+  });
+
+  const agents = data?.leaderboard ?? [];
+
+  if (loading && !data) {
+    return (
+      <div className="mesh-bg min-h-screen">
+        <div className="max-w-5xl mx-auto px-6 py-12">
+          <div className="text-center py-24 text-zinc-600">
+            <div className="inline-flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+              Loading...
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mesh-bg min-h-screen">
       <div className="max-w-5xl mx-auto px-6 py-12">
