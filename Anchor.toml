@@ -1,0 +1,22 @@
+[toolchain]
+anchor_version = "0.32.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+clawbets = "3kBwjzUXtVeUshBWDD1Ls5PZPqQZgQUGNUTdP6jCqobb"
+
+[programs.devnet]
+clawbets = "3kBwjzUXtVeUshBWDD1Ls5PZPqQZgQUGNUTdP6jCqobb"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

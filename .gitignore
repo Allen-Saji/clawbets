@@ -1,0 +1,11 @@
+target/
+node_modules/
+.anchor/
+dist/
+.env
+.env.local
+*.so
+test-ledger/
+app/.next/
+app/node_modules/
+api/node_modules/
