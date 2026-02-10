@@ -95,7 +95,7 @@ export default function AboutPage() {
               {[
                 { label: "Smart Contract", value: "Anchor 0.32.1 (Rust) on Solana" },
                 { label: "Oracle", value: "Pyth Network price feeds" },
-                { label: "API", value: "Express.js REST API" },
+                { label: "API", value: "Next.js Route Handlers" },
                 { label: "Frontend", value: "Next.js 16 + Tailwind CSS" },
               ].map((item) => (
                 <div key={item.label} className="bg-[#0a0a10] rounded-lg p-3 border border-[#1a1a2e]/40">
