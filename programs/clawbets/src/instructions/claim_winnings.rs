@@ -58,6 +58,10 @@ pub fn handler(ctx: Context<ClaimWinnings>) -> Result<()> {
         (market.total_no, market.total_yes)
     };
 
+    // If no one bet on the winning side, there are no winners to claim.
+    // Losers should use reclaim_bet instead.
+    require!(winning_pool > 0, ClawBetsError::NoWinners);
+
     // Winnings = bet_amount + (bet_amount / winning_pool) * losing_pool
     // Use u128 to avoid overflow, with safe truncation check
     let share_128 = (bet.amount as u128)

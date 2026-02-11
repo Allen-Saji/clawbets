@@ -38,12 +38,22 @@ pub fn handler(ctx: Context<ReclaimBet>) -> Result<()> {
     let market = &ctx.accounts.market;
     let bet = &ctx.accounts.bet;
 
-    // Allow reclaim if market is cancelled OR expired (past resolution deadline without resolution)
+    // Allow reclaim if:
+    // 1. Market is cancelled
+    // 2. Market expired (past resolution deadline without resolution)
+    // 3. Market resolved but winning pool is zero (no winners exist, losers get refund)
+    let is_cancelled = market.status == MarketStatus::Cancelled;
+    let is_expired = market.status == MarketStatus::Expired
+        || (market.status != MarketStatus::Resolved
+            && Clock::get()?.unix_timestamp > market.resolution_deadline);
+    let is_resolved_no_winners = market.status == MarketStatus::Resolved && {
+        let outcome = market.outcome.unwrap_or(false);
+        let winning_pool = if outcome { market.total_yes } else { market.total_no };
+        winning_pool == 0
+    };
     require!(
-        market.status == MarketStatus::Cancelled
-            || (market.status != MarketStatus::Resolved
-                && Clock::get()?.unix_timestamp > market.resolution_deadline),
-        ClawBetsError::MarketNotCancelled
+        is_cancelled || is_expired || is_resolved_no_winners,
+        ClawBetsError::MarketNotReclaimable
     );
 
     require!(!bet.claimed, ClawBetsError::AlreadyClaimed);

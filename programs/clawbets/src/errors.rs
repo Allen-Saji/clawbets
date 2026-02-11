@@ -44,4 +44,8 @@ pub enum ClawBetsError {
     InvalidOracleData,
     #[msg("Oracle price is stale")]
     StaleOraclePrice,
+    #[msg("No bets on the winning side — use reclaim_bet instead")]
+    NoWinners,
+    #[msg("Market is not in a reclaimable state")]
+    MarketNotReclaimable,
 }
