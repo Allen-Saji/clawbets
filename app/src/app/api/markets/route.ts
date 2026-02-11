@@ -14,7 +14,7 @@ export async function GET() {
       creator: m.account.creator.toBase58(),
       title: m.account.title,
       description: m.account.description,
-      oracleFeed: m.account.oracleFeed.toBase58(),
+      feedId: "0x" + Buffer.from(m.account.feedId).toString("hex"),
       targetPrice: m.account.targetPrice.toNumber(),
       targetAbove: m.account.targetAbove,
       deadline: m.account.deadline.toNumber(),

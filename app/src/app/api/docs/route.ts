@@ -71,7 +71,7 @@ export async function GET() {
               creator: "string — creator pubkey",
               title: "string",
               description: "string",
-              oracleFeed: "string — Pyth oracle feed address",
+              feedId: "string — Pyth price feed ID (hex, e.g. 0xef0d8b...)",
               targetPrice: "number",
               targetAbove: "boolean",
               deadline: "number — unix timestamp",

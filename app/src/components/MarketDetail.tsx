@@ -167,7 +167,7 @@ export default function MarketDetail({ marketId }: { marketId: number }) {
 
           <div className="mt-6 pt-5 border-t border-[#1a1a2e]/40 grid grid-cols-2 gap-3 text-[13px]">
             <div><span className="text-zinc-600">Target </span><span className="font-medium">Price {market.targetAbove ? "above" : "below"} {market.targetPrice}</span></div>
-            <div><span className="text-zinc-600">Oracle </span><span className="font-mono text-[11px]">{truncateAddress(market.oracleFeed, 6)}</span></div>
+            <div><span className="text-zinc-600">Feed </span><span className="font-mono text-[11px]">{market.feedId?.slice(0, 14)}...</span></div>
             <div><span className="text-zinc-600">Min Bet </span><span>{(market.minBet / 1e9).toFixed(2)} SOL</span></div>
             <div><span className="text-zinc-600">Max Bet </span><span>{(market.maxBet / 1e9).toFixed(2)} SOL</span></div>
             <div><span className="text-zinc-600">Created </span><span>{formatTimestamp(market.createdAt)}</span></div>

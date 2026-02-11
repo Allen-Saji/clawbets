@@ -6,7 +6,7 @@ export interface Market {
   creator: string;
   title: string;
   description: string;
-  oracleFeed: string;
+  feedId: string;
   targetPrice: number;
   targetAbove: boolean;
   deadline: number;

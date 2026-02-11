@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 use crate::state::*;
 use crate::errors::ClawBetsError;
 
@@ -14,9 +15,9 @@ pub struct ResolveMarket<'info> {
     )]
     pub market: Account<'info, Market>,
 
-    /// CHECK: Pyth oracle price feed account - validated in handler.
-    /// Owner is verified to be a known Pyth program in the handler.
-    pub oracle_feed: AccountInfo<'info>,
+    /// Pyth PriceUpdateV2 account — posted on-chain via Hermes + Pyth receiver.
+    /// Anchor automatically validates this is owned by the Pyth receiver program.
+    pub price_update: Account<'info, PriceUpdateV2>,
 }
 
 pub fn handler(ctx: Context<ResolveMarket>) -> Result<()> {
@@ -41,70 +42,30 @@ pub fn handler(ctx: Context<ResolveMarket>) -> Result<()> {
         ClawBetsError::MarketNotOpen
     );
 
-    // Verify oracle feed matches
-    require!(
-        ctx.accounts.oracle_feed.key() == market.oracle_feed,
-        ClawBetsError::InvalidOracleData
-    );
+    // Get price from Pyth PriceUpdateV2 — validates feed_id and staleness
+    let price_update = &ctx.accounts.price_update;
+    let maximum_age: u64 = 120; // 2 minutes max staleness
+    let price = price_update
+        .get_price_no_older_than(&clock, maximum_age, &market.feed_id)
+        .map_err(|_| ClawBetsError::InvalidOracleData)?;
 
-    // Verify oracle account is owned by a known Pyth program
-    // Pyth V2 mainnet: FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH
-    // Pyth V2 devnet: gSbePebfvPy7tRqimPoVecS2UsBvYv46ynrzWocc92s
-    let pyth_mainnet = "FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH".parse::<Pubkey>().unwrap();
-    let pyth_devnet = "gSbePebfvPy7tRqimPoVecS2UsBvYv46ynrzWocc92s".parse::<Pubkey>().unwrap();
-    require!(
-        *ctx.accounts.oracle_feed.owner == pyth_mainnet
-            || *ctx.accounts.oracle_feed.owner == pyth_devnet,
-        ClawBetsError::InvalidOracleData
-    );
-
-    // Read Pyth price from oracle account
-    // For devnet/testing, we parse the Pyth V2 price feed format
-    let oracle_data = ctx.accounts.oracle_feed.try_borrow_data()?;
-    
-    // Pyth price account layout: offset 208 = price (i64), offset 216 = conf (u64), offset 232 = expo (i32)
-    // This is the standard Pyth V2 format
-    require!(oracle_data.len() >= 240, ClawBetsError::InvalidOracleData);
-    
-    let price = i64::from_le_bytes(
-        oracle_data[208..216].try_into().map_err(|_| ClawBetsError::InvalidOracleData)?
-    );
-    let _conf = u64::from_le_bytes(
-        oracle_data[216..224].try_into().map_err(|_| ClawBetsError::InvalidOracleData)?
-    );
-    let expo = i32::from_le_bytes(
-        oracle_data[232..236].try_into().map_err(|_| ClawBetsError::InvalidOracleData)?
-    );
-    let publish_time = i64::from_le_bytes(
-        oracle_data[224..232].try_into().map_err(|_| ClawBetsError::InvalidOracleData)?
-    );
-    
-    // Check price is not stale (within 60 seconds)
-    require!(
-        clock.unix_timestamp - publish_time < 60,
-        ClawBetsError::StaleOraclePrice
-    );
-    
-    // Normalize price to same scale as target_price
-    // Target price is stored with same exponent as oracle
-    let _ = expo; // Both prices use oracle's native scale
-    
     // Determine outcome
     let outcome = if market.target_above {
-        price >= market.target_price
+        price.price >= market.target_price
     } else {
-        price < market.target_price
+        price.price < market.target_price
     };
 
     market.status = MarketStatus::Resolved;
     market.outcome = Some(outcome);
-    market.resolved_price = Some(price);
+    market.resolved_price = Some(price.price);
     market.resolved_at = Some(clock.unix_timestamp);
 
     msg!(
-        "Market {} resolved: price={}, target={}, above={}, outcome={}",
+        "Market {} resolved: price=({} * 10^{}), target={}, above={}, outcome={}",
         market.market_id,
-        price,
+        price.price,
+        price.exponent,
         market.target_price,
         market.target_above,
         if outcome { "YES wins" } else { "NO wins" }

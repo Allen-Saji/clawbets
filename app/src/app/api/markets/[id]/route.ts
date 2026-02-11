@@ -30,7 +30,7 @@ export async function GET(
       creator: market.creator.toBase58(),
       title: market.title,
       description: market.description,
-      oracleFeed: market.oracleFeed.toBase58(),
+      feedId: "0x" + Buffer.from(market.feedId).toString("hex"),
       targetPrice: market.targetPrice.toNumber(),
       targetAbove: market.targetAbove,
       deadline: market.deadline.toNumber(),

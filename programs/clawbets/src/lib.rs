@@ -28,7 +28,7 @@ pub mod clawbets {
         ctx: Context<CreateMarket>,
         title: String,
         description: String,
-        oracle_feed: Pubkey,
+        feed_id: [u8; 32],
         target_price: i64,
         target_above: bool,
         deadline: i64,
@@ -37,7 +37,7 @@ pub mod clawbets {
         max_bet: u64,
     ) -> Result<()> {
         instructions::create_market::handler(
-            ctx, title, description, oracle_feed, target_price,
+            ctx, title, description, feed_id, target_price,
             target_above, deadline, resolution_deadline, min_bet, max_bet,
         )
     }

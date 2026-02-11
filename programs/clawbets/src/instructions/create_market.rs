@@ -47,7 +47,7 @@ pub fn handler(
     ctx: Context<CreateMarket>,
     title: String,
     description: String,
-    oracle_feed: Pubkey,
+    feed_id: [u8; 32],
     target_price: i64,
     target_above: bool,
     deadline: i64,
@@ -72,7 +72,7 @@ pub fn handler(
     market.market_id = protocol.market_count;
     market.title = title;
     market.description = description;
-    market.oracle_feed = oracle_feed;
+    market.feed_id = feed_id;
     market.target_price = target_price;
     market.target_above = target_above;
     market.deadline = deadline;

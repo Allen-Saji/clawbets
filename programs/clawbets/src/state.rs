@@ -22,8 +22,8 @@ pub struct Market {
     /// Market description
     #[max_len(512)]
     pub description: String,
-    /// Pyth oracle price feed account
-    pub oracle_feed: Pubkey,
+    /// Pyth price feed ID (32 bytes, e.g. SOL/USD feed id from Pyth)
+    pub feed_id: [u8; 32],
     /// Target price (in oracle price format, scaled)
     pub target_price: i64,
     /// True = bet on price being ABOVE target, False = BELOW
