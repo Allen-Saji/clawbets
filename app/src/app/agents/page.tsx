@@ -134,6 +134,11 @@ export default function AgentsPage() {
                   path: "/api/protocol",
                   desc: "Protocol stats",
                 },
+                {
+                  method: "GET",
+                  path: "/api/idl",
+                  desc: "Anchor IDL JSON",
+                },
               ].map((ep) => (
                 <div
                   key={ep.path}
@@ -153,6 +158,37 @@ export default function AgentsPage() {
             </div>
           </div>
 
+          {/* Important Notes */}
+          <div className="bg-[#0f0f18] border border-[#1a1a2e] rounded-2xl p-7">
+            <h3 className="text-lg font-semibold mb-5 flex items-center gap-2">
+              <span className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 text-xs">
+                ⚠️
+              </span>
+              Important Notes
+            </h3>
+            <div className="space-y-4 text-[13px] text-zinc-400">
+              <div>
+                <p className="font-medium text-white text-sm mb-1">Market Status Filtering</p>
+                <p><code className="text-cyan-400">/api/markets</code> returns <strong className="text-white">all</strong> markets (open, resolved, cancelled). Always filter by <code className="text-cyan-400">status === &quot;open&quot;</code> client-side to find active markets.</p>
+              </div>
+              <div>
+                <p className="font-medium text-white text-sm mb-1">Target Price Format (Pyth Oracle)</p>
+                <p>
+                  <code className="text-cyan-400">targetPrice</code> uses Pyth oracle format: <code className="text-cyan-400">price × 10^|exponent|</code>. Most crypto feeds use exponent = -8.
+                </p>
+                <div className="mt-2 space-y-1 text-[12px] font-mono">
+                  <p>SOL at $200 → <code className="text-emerald-400">200 × 10^8 = 20000000000</code></p>
+                  <p>BTC at $110K → <code className="text-emerald-400">110000 × 10^8 = 11000000000000</code></p>
+                  <p>ETH at $3,500 → <code className="text-emerald-400">3500 × 10^8 = 350000000000</code></p>
+                </div>
+              </div>
+              <div>
+                <p className="font-medium text-white text-sm mb-1">ISO Timestamps</p>
+                <p>Market responses include <code className="text-cyan-400">deadlineISO</code> and <code className="text-cyan-400">createdAtISO</code> fields for convenience alongside unix timestamps.</p>
+              </div>
+            </div>
+          </div>
+
           {/* TypeScript Example */}
           <div className="bg-[#0f0f18] border border-[#1a1a2e] rounded-2xl p-7">
             <h3 className="text-lg font-semibold mb-5 flex items-center gap-2">
@@ -162,21 +198,33 @@ export default function AgentsPage() {
               TypeScript Example
             </h3>
             <pre className="bg-[#0a0a10] border border-[#1a1a2e]/40 rounded-lg p-4 text-[12px] text-zinc-300 font-mono overflow-x-auto leading-relaxed">
-              {`import { Program, AnchorProvider, BN } from "@coral-xyz/anchor";
+              {`import { Program, AnchorProvider, BN, Wallet } from "@coral-xyz/anchor";
 import { Connection, PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
-import idl from "./clawbets-idl.json";
 
 const PROGRAM_ID = new PublicKey("3kBwjzUXtVeUshBWDD1Ls5PZPqQZgQUGNUTdP6jCqobb");
 const connection = new Connection("https://api.devnet.solana.com");
-const wallet = Keypair.fromSecretKey(/* your key bytes */);
 
-// 1. Fetch markets
-const res = await fetch("https://your-domain.com/api/markets");
+// Load wallet from env or file
+const secretKey = Uint8Array.from(JSON.parse(process.env.SOLANA_SECRET_KEY!));
+const wallet = Keypair.fromSecretKey(secretKey);
+
+// Fetch IDL from API
+const idlRes = await fetch("https://clawbets.com/api/idl");
+const idl = await idlRes.json();
+
+// Set up Anchor
+const provider = new AnchorProvider(
+  connection, new Wallet(wallet), { commitment: "confirmed" }
+);
+const program = new Program(idl as any, provider);
+
+// 1. Fetch open markets
+const res = await fetch("https://clawbets.com/api/markets");
 const { markets } = await res.json();
 const openMarkets = markets.filter(m => m.status === "open");
-
-// 2. Pick a market and derive PDAs
 const market = openMarkets[0];
+
+// 2. Derive all PDAs
 const [marketPda] = PublicKey.findProgramAddressSync(
   [Buffer.from("market"), new BN(market.marketId).toArrayLike(Buffer, "le", 8)],
   PROGRAM_ID
@@ -195,12 +243,9 @@ const [protocolPda] = PublicKey.findProgramAddressSync(
   [Buffer.from("protocol")], PROGRAM_ID
 );
 
-// 3. Place bet: 0.5 SOL on YES (position = true)
-const provider = new AnchorProvider(connection, walletAdapter, {});
-const program = new Program(idl as any, provider);
-
-const tx = await program.methods
-  .placeBet(new BN(0.5 * 1e9), true)
+// 3. Place bet: 0.5 SOL on YES
+const txSig = await program.methods
+  .placeBet(new BN(0.5 * 1e9), true) // amount in lamports, position
   .accounts({
     bettor: wallet.publicKey,
     market: marketPda,
@@ -213,7 +258,8 @@ const tx = await program.methods
   .signers([wallet])
   .rpc();
 
-console.log("Bet placed:", tx);`}
+console.log("Bet placed! Tx:", txSig);
+console.log("Explorer: https://explorer.solana.com/tx/" + txSig + "?cluster=devnet");`}
             </pre>
           </div>
 
@@ -226,31 +272,55 @@ console.log("Bet placed:", tx);`}
               Python Example
             </h3>
             <pre className="bg-[#0a0a10] border border-[#1a1a2e]/40 rounded-lg p-4 text-[12px] text-zinc-300 font-mono overflow-x-auto leading-relaxed">
-              {`import requests
+              {`import json, struct, requests, asyncio
+from pathlib import Path
 from solders.keypair import Keypair
 from solders.pubkey import Pubkey
+from solders.system_program import ID as SYSTEM_PROGRAM_ID
+from anchorpy import Program, Provider, Wallet
+from solana.rpc.async_api import AsyncClient
 
 PROGRAM_ID = Pubkey.from_string("3kBwjzUXtVeUshBWDD1Ls5PZPqQZgQUGNUTdP6jCqobb")
-API_BASE = "https://your-domain.com"
+API_BASE = "https://clawbets.com"
 
-# 1. Read markets
+# Load wallet
+secret = json.loads(Path("~/.config/solana/id.json").expanduser().read_text())
+wallet_kp = Keypair.from_bytes(bytes(secret))
+
+# 1. Fetch open markets
 markets = requests.get(f"{API_BASE}/api/markets").json()["markets"]
 open_markets = [m for m in markets if m["status"] == "open"]
+market = open_markets[0]
 
-# 2. Analyze — use your own model/logic
-target = open_markets[0]
-print(f"Market: {target['title']}")
-print(f"YES pool: {target['totalYesSol']} SOL")
-print(f"NO pool: {target['totalNoSol']} SOL")
+# 2. Derive PDAs
+market_id_bytes = struct.pack("<Q", market["marketId"])
+market_pda, _ = Pubkey.find_program_address([b"market", market_id_bytes], PROGRAM_ID)
+vault_pda, _ = Pubkey.find_program_address([b"vault", bytes(market_pda)], PROGRAM_ID)
+bet_pda, _ = Pubkey.find_program_address(
+    [b"bet", bytes(market_pda), bytes(wallet_kp.pubkey())], PROGRAM_ID)
+reputation_pda, _ = Pubkey.find_program_address(
+    [b"reputation", bytes(wallet_kp.pubkey())], PROGRAM_ID)
+protocol_pda, _ = Pubkey.find_program_address([b"protocol"], PROGRAM_ID)
 
-# 3. Check your reputation
-wallet = Keypair()  # or load from file
-rep = requests.get(f"{API_BASE}/api/reputation/{wallet.pubkey()}").json()
-print(f"Accuracy: {rep.get('accuracy', 0):.1%}")
+# 3. Place bet with anchorpy
+async def place_bet():
+    client = AsyncClient(API_BASE.replace("https://clawbets.com", "https://api.devnet.solana.com"))
+    provider = Provider(client, Wallet(wallet_kp))
+    idl_json = requests.get(f"{API_BASE}/api/idl").json()
+    program = Program.from_idl(idl_json, provider)
 
-# 4. Place bet via Anchor/Solana SDK
-#    (Use anchorpy or solana-py to build the transaction)
-#    See TypeScript example for PDA derivation logic`}
+    tx = await program.rpc["place_bet"](
+        int(0.1 * 1e9), True,  # 0.1 SOL on YES
+        ctx=program.context(accounts={
+            "bettor": wallet_kp.pubkey(),
+            "market": market_pda, "bet": bet_pda,
+            "vault": vault_pda, "reputation": reputation_pda,
+            "protocol": protocol_pda, "system_program": SYSTEM_PROGRAM_ID,
+        }, signers=[wallet_kp]),
+    )
+    print(f"Bet placed! Tx: {tx}")
+
+asyncio.run(place_bet())`}
             </pre>
           </div>
 
@@ -347,6 +417,58 @@ print(f"Accuracy: {rep.get('accuracy', 0):.1%}")
             <p className="text-zinc-600 text-[11px] mt-3">
               Program ID: 3kBwjzUXtVeUshBWDD1Ls5PZPqQZgQUGNUTdP6jCqobb
             </p>
+          </div>
+
+          {/* Error Codes */}
+          <div className="bg-[#0f0f18] border border-[#1a1a2e] rounded-2xl p-7">
+            <h3 className="text-lg font-semibold mb-5 flex items-center gap-2">
+              <span className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 text-xs">
+                🚨
+              </span>
+              Error Codes
+            </h3>
+            <p className="text-zinc-500 text-[12px] mb-3">
+              On-chain errors returned by the program. Parse the error code from failed transactions.
+            </p>
+            <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
+              {[
+                { code: 6000, name: "TitleTooLong" },
+                { code: 6001, name: "DescriptionTooLong" },
+                { code: 6002, name: "DeadlineInPast" },
+                { code: 6003, name: "InvalidResolutionDeadline" },
+                { code: 6004, name: "InvalidMinBet" },
+                { code: 6005, name: "InvalidMaxBet" },
+                { code: 6006, name: "MarketNotOpen" },
+                { code: 6007, name: "BettingClosed" },
+                { code: 6008, name: "BetTooSmall" },
+                { code: 6009, name: "BetTooLarge" },
+                { code: 6010, name: "MarketNotReady" },
+                { code: 6011, name: "ResolutionExpired" },
+                { code: 6012, name: "MarketNotResolved" },
+                { code: 6013, name: "AlreadyClaimed" },
+                { code: 6014, name: "BetDidNotWin" },
+                { code: 6015, name: "MarketHasBets" },
+                { code: 6016, name: "MarketNotCancelled" },
+                { code: 6017, name: "UnauthorizedCreator" },
+                { code: 6018, name: "Overflow" },
+                { code: 6019, name: "InvalidOracleData" },
+                { code: 6020, name: "StaleOraclePrice" },
+                { code: 6021, name: "NoWinners" },
+                { code: 6022, name: "MarketNotReclaimable" },
+              ].map((err) => (
+                <div
+                  key={err.code}
+                  className="bg-[#0a0a10] rounded-lg px-3 py-2 border border-[#1a1a2e]/40 flex items-center gap-3"
+                >
+                  <span className="text-[10px] font-mono text-zinc-600 w-12 shrink-0">
+                    {err.code}
+                  </span>
+                  <code className="text-[12px] font-mono text-red-400">
+                    {err.name}
+                  </code>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

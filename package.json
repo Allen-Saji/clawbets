@@ -10,7 +10,7 @@
     "@pythnetwork/hermes-client": "^2.1.0",
     "@pythnetwork/pyth-solana-receiver": "^0.10.0",
     "@solana/web3.js": "^1.98.0",
-    "rpc-websockets": "^7.11.2"
+    "rpc-websockets": "^7.6.2"
   },
   "devDependencies": {
     "@types/chai": "^4.3.0",

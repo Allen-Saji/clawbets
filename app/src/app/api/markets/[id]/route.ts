@@ -57,6 +57,8 @@ export async function GET(
       resolvedPrice: market.resolvedPrice ? market.resolvedPrice.toNumber() : null,
       resolvedAt: market.resolvedAt ? market.resolvedAt.toNumber() : null,
       createdAt: market.createdAt.toNumber(),
+      deadlineISO: new Date(market.deadline.toNumber() * 1000).toISOString(),
+      createdAtISO: new Date(market.createdAt.toNumber() * 1000).toISOString(),
       yesOdds: market.totalYes.toNumber() + market.totalNo.toNumber() > 0
         ? (market.totalNo.toNumber() / (market.totalYes.toNumber() + market.totalNo.toNumber()) * 100).toFixed(1)
         : "50.0",

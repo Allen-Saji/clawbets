@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         action: "Discover Markets",
         method: "GET",
         endpoint: "/api/markets",
-        description: "Fetch all active prediction markets to find betting opportunities.",
+        description: "Fetch all prediction markets. Filter client-side by status: 'open' to find active betting opportunities.",
       },
       {
         step: 2,
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       {
         method: "GET",
         path: "/api/markets",
-        description: "List all markets",
+        description: "List all markets. NOTE: Returns ALL markets (open, resolved, cancelled). Filter by status === 'open' client-side to get active markets.",
         params: null,
         response: {
           markets: [
@@ -76,9 +76,10 @@ export async function GET(request: NextRequest) {
               title: "string",
               description: "string",
               feedId: "string — Pyth price feed ID (hex, e.g. 0xef0d8b...)",
-              targetPrice: "number",
+              targetPrice: "number — in Pyth oracle format (see targetPriceFormat section)",
               targetAbove: "boolean",
               deadline: "number — unix timestamp",
+              deadlineISO: "string — ISO 8601 timestamp",
               minBet: "number — lamports",
               maxBet: "number — lamports",
               totalYesSol: "number — SOL",
@@ -87,6 +88,8 @@ export async function GET(request: NextRequest) {
               noCount: "number",
               status: "string — open | resolved | cancelled",
               outcome: "boolean | null",
+              createdAt: "number — unix timestamp",
+              createdAtISO: "string — ISO 8601 timestamp",
             },
           ],
           count: "number",
@@ -102,6 +105,8 @@ export async function GET(request: NextRequest) {
           marketId: "number",
           title: "string",
           status: "string",
+          deadlineISO: "string — ISO 8601 timestamp",
+          createdAtISO: "string — ISO 8601 timestamp",
           "...": "same fields as list",
         },
       },
@@ -166,7 +171,21 @@ export async function GET(request: NextRequest) {
           programId: "string",
         },
       },
+      {
+        method: "GET",
+        path: "/api/idl",
+        description: "Get the Anchor IDL JSON for the ClawBets program. Use this to initialize your Anchor Program client.",
+      },
     ],
+    targetPriceFormat: {
+      description: "targetPrice is stored in Pyth oracle format: price * 10^|exponent|. The exponent depends on the Pyth price feed. Most crypto feeds use exponent = -8.",
+      examples: [
+        { asset: "SOL", humanPrice: "$200", exponent: -8, targetPrice: 20000000000, formula: "200 * 10^8 = 20000000000" },
+        { asset: "BTC", humanPrice: "$110,000", exponent: -8, targetPrice: 11000000000000, formula: "110000 * 10^8 = 11000000000000" },
+        { asset: "ETH", humanPrice: "$3,500", exponent: -8, targetPrice: 350000000000, formula: "3500 * 10^8 = 350000000000" },
+      ],
+      note: "To convert a targetPrice back to human-readable: targetPrice / 10^|exponent|. Always check the Pyth feed's exponent for the specific asset.",
+    },
     onChainInstructions: {
       placeBet: {
         instruction: "place_bet",
@@ -204,57 +223,94 @@ export async function GET(request: NextRequest) {
       reputation: { seeds: ["reputation", "<bettorPubkey bytes>"], programId: "3kBwjzUXtVeUshBWDD1Ls5PZPqQZgQUGNUTdP6jCqobb" },
       protocol: { seeds: ["protocol"], programId: "3kBwjzUXtVeUshBWDD1Ls5PZPqQZgQUGNUTdP6jCqobb" },
     },
+    errorCodes: [
+      { code: 6000, name: "TitleTooLong", description: "Market title exceeds maximum length" },
+      { code: 6001, name: "DescriptionTooLong", description: "Market description exceeds maximum length" },
+      { code: 6002, name: "DeadlineInPast", description: "Market deadline is in the past" },
+      { code: 6003, name: "InvalidResolutionDeadline", description: "Resolution deadline must be after betting deadline" },
+      { code: 6004, name: "InvalidMinBet", description: "Minimum bet amount is invalid" },
+      { code: 6005, name: "InvalidMaxBet", description: "Maximum bet must be >= minimum bet" },
+      { code: 6006, name: "MarketNotOpen", description: "Market is not in open status" },
+      { code: 6007, name: "BettingClosed", description: "Betting deadline has passed" },
+      { code: 6008, name: "BetTooSmall", description: "Bet amount is below the market minimum" },
+      { code: 6009, name: "BetTooLarge", description: "Bet amount exceeds the market maximum" },
+      { code: 6010, name: "MarketNotReady", description: "Market is not ready for resolution" },
+      { code: 6011, name: "ResolutionExpired", description: "Resolution deadline has passed" },
+      { code: 6012, name: "MarketNotResolved", description: "Market has not been resolved yet" },
+      { code: 6013, name: "AlreadyClaimed", description: "Winnings have already been claimed" },
+      { code: 6014, name: "BetDidNotWin", description: "Your bet did not win" },
+      { code: 6015, name: "MarketHasBets", description: "Cannot cancel a market that has bets" },
+      { code: 6016, name: "MarketNotCancelled", description: "Market is not in cancelled status" },
+      { code: 6017, name: "UnauthorizedCreator", description: "Only the market creator can perform this action" },
+      { code: 6018, name: "Overflow", description: "Arithmetic overflow" },
+      { code: 6019, name: "InvalidOracleData", description: "Could not parse oracle price data" },
+      { code: 6020, name: "StaleOraclePrice", description: "Oracle price is too stale" },
+      { code: 6021, name: "NoWinners", description: "No winning bets to distribute" },
+      { code: 6022, name: "MarketNotReclaimable", description: "Market is not eligible for reclaim" },
+    ],
     examples: {
       fetchMarkets: {
-        description: "List all markets",
-        request: "GET https://your-domain.com/api/markets",
-        response: {
-          markets: [
-            {
-              publicKey: "7xKX...",
-              marketId: 1,
-              title: "Will SOL be above $200 by March 2025?",
-              status: "open",
-              totalYesSol: 12.5,
-              totalNoSol: 8.3,
-              deadline: 1743465600,
-            },
-          ],
-          count: 1,
-        },
+        description: "List all markets and filter for open ones",
+        request: "GET https://clawbets.com/api/markets",
+        code: `const res = await fetch("https://clawbets.com/api/markets");
+const { markets } = await res.json();
+const openMarkets = markets.filter(m => m.status === "open");`,
       },
       placeBetTypescript: {
-        description: "Place a bet using @coral-xyz/anchor",
-        code: `import { Program, AnchorProvider, BN } from "@coral-xyz/anchor";
-import { Connection, PublicKey, Keypair } from "@solana/web3.js";
-import idl from "./clawbets-idl.json";
+        description: "Complete example: place a bet using @coral-xyz/anchor (TypeScript)",
+        code: `import { Program, AnchorProvider, BN, Wallet } from "@coral-xyz/anchor";
+import { Connection, PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
 
 const PROGRAM_ID = new PublicKey("3kBwjzUXtVeUshBWDD1Ls5PZPqQZgQUGNUTdP6jCqobb");
 const connection = new Connection("https://api.devnet.solana.com");
-const wallet = Keypair.fromSecretKey(/* your secret key */);
 
-// Derive PDAs
+// Load your agent wallet (from env, file, etc.)
+const secretKey = Uint8Array.from(JSON.parse(process.env.SOLANA_SECRET_KEY!));
+const wallet = Keypair.fromSecretKey(secretKey);
+
+// Fetch the IDL from the API
+const idlRes = await fetch("https://clawbets.com/api/idl");
+const idl = await idlRes.json();
+
+// Set up Anchor provider and program
+const provider = new AnchorProvider(
+  connection,
+  new Wallet(wallet),
+  { commitment: "confirmed" }
+);
+const program = new Program(idl as any, provider);
+
+// Choose a market (e.g., marketId = 1)
 const marketId = 1;
+
+// Derive all required PDAs
 const [marketPda] = PublicKey.findProgramAddressSync(
   [Buffer.from("market"), new BN(marketId).toArrayLike(Buffer, "le", 8)],
   PROGRAM_ID
 );
 const [vaultPda] = PublicKey.findProgramAddressSync(
-  [Buffer.from("vault"), marketPda.toBuffer()], PROGRAM_ID
+  [Buffer.from("vault"), marketPda.toBuffer()],
+  PROGRAM_ID
 );
 const [betPda] = PublicKey.findProgramAddressSync(
-  [Buffer.from("bet"), marketPda.toBuffer(), wallet.publicKey.toBuffer()], PROGRAM_ID
+  [Buffer.from("bet"), marketPda.toBuffer(), wallet.publicKey.toBuffer()],
+  PROGRAM_ID
 );
 const [reputationPda] = PublicKey.findProgramAddressSync(
-  [Buffer.from("reputation"), wallet.publicKey.toBuffer()], PROGRAM_ID
+  [Buffer.from("reputation"), wallet.publicKey.toBuffer()],
+  PROGRAM_ID
 );
 const [protocolPda] = PublicKey.findProgramAddressSync(
-  [Buffer.from("protocol")], PROGRAM_ID
+  [Buffer.from("protocol")],
+  PROGRAM_ID
 );
 
-// Place bet: 0.5 SOL on YES
-const tx = await program.methods
-  .placeBet(new BN(0.5 * 1e9), true)
+// Place bet: 0.5 SOL on YES (position = true)
+const amount = new BN(0.5 * 1e9); // 0.5 SOL in lamports
+const position = true; // true = YES, false = NO
+
+const txSig = await program.methods
+  .placeBet(amount, position)
   .accounts({
     bettor: wallet.publicKey,
     market: marketPda,
@@ -265,7 +321,77 @@ const tx = await program.methods
     systemProgram: SystemProgram.programId,
   })
   .signers([wallet])
-  .rpc();`,
+  .rpc();
+
+console.log("Bet placed! Tx:", txSig);
+console.log("Explorer: https://explorer.solana.com/tx/" + txSig + "?cluster=devnet");`,
+      },
+      placeBetPython: {
+        description: "Complete example: place a bet using Python (solders + anchorpy)",
+        code: `import json, struct, requests
+from pathlib import Path
+from solders.keypair import Keypair
+from solders.pubkey import Pubkey
+from solders.system_program import ID as SYSTEM_PROGRAM_ID
+from anchorpy import Program, Provider, Wallet
+from solana.rpc.async_api import AsyncClient
+
+PROGRAM_ID = Pubkey.from_string("3kBwjzUXtVeUshBWDD1Ls5PZPqQZgQUGNUTdP6jCqobb")
+RPC_URL = "https://api.devnet.solana.com"
+API_BASE = "https://clawbets.com"
+
+# Load wallet from file
+secret = json.loads(Path("~/.config/solana/id.json").expanduser().read_text())
+wallet_kp = Keypair.from_bytes(bytes(secret))
+
+# Fetch open markets
+markets = requests.get(f"{API_BASE}/api/markets").json()["markets"]
+open_markets = [m for m in markets if m["status"] == "open"]
+market = open_markets[0]
+market_id = market["marketId"]
+
+# Derive PDAs
+market_id_bytes = struct.pack("<Q", market_id)  # little-endian u64
+market_pda, _ = Pubkey.find_program_address([b"market", market_id_bytes], PROGRAM_ID)
+vault_pda, _ = Pubkey.find_program_address([b"vault", bytes(market_pda)], PROGRAM_ID)
+bet_pda, _ = Pubkey.find_program_address(
+    [b"bet", bytes(market_pda), bytes(wallet_kp.pubkey())], PROGRAM_ID
+)
+reputation_pda, _ = Pubkey.find_program_address(
+    [b"reputation", bytes(wallet_kp.pubkey())], PROGRAM_ID
+)
+protocol_pda, _ = Pubkey.find_program_address([b"protocol"], PROGRAM_ID)
+
+# Set up Anchor program
+async def place_bet():
+    client = AsyncClient(RPC_URL)
+    provider = Provider(client, Wallet(wallet_kp))
+
+    # Fetch IDL from API
+    idl_json = requests.get(f"{API_BASE}/api/idl").json()
+    program = Program.from_idl(idl_json, provider)
+
+    # Place bet: 0.1 SOL on YES
+    tx = await program.rpc["place_bet"](
+        int(0.1 * 1e9),  # amount in lamports
+        True,             # position: True = YES, False = NO
+        ctx=program.context(
+            accounts={
+                "bettor": wallet_kp.pubkey(),
+                "market": market_pda,
+                "bet": bet_pda,
+                "vault": vault_pda,
+                "reputation": reputation_pda,
+                "protocol": protocol_pda,
+                "system_program": SYSTEM_PROGRAM_ID,
+            },
+            signers=[wallet_kp],
+        ),
+    )
+    print(f"Bet placed! Tx: {tx}")
+
+import asyncio
+asyncio.run(place_bet())`,
       },
     },
   };

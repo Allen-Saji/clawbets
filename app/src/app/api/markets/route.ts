@@ -41,6 +41,8 @@ export async function GET(request: NextRequest) {
       resolvedPrice: m.account.resolvedPrice ? m.account.resolvedPrice.toNumber() : null,
       resolvedAt: m.account.resolvedAt ? m.account.resolvedAt.toNumber() : null,
       createdAt: m.account.createdAt.toNumber(),
+      deadlineISO: new Date(m.account.deadline.toNumber() * 1000).toISOString(),
+      createdAtISO: new Date(m.account.createdAt.toNumber() * 1000).toISOString(),
     }));
 
     formatted.sort((a: any, b: any) => b.createdAt - a.createdAt);

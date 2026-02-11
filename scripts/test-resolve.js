@@ -103,7 +103,6 @@ async function main() {
   console.log("\n--- Step 5: Post price on-chain ---");
   const pythReceiver = new PythSolanaReceiver({ connection, wallet });
   
-  // Use the postPriceUpdate method
   const txBuilder = pythReceiver.newTransactionBuilder({ closeUpdateAccounts: false });
   await txBuilder.addPostPriceUpdates([priceVaa]);
   
@@ -112,18 +111,15 @@ async function main() {
     jitoTipLamports: 0,
   });
   
-  // Get the price update account from the builder
+  // Debug: inspect the structure
   let priceUpdateAccount = null;
-  for (const { tx, signers, postInstructions, priceFeedIdToPriceUpdateAccount } of txsWithAccounts) {
-    if (priceFeedIdToPriceUpdateAccount) {
-      const feedKey = "0x" + FEED_HEX;
-      priceUpdateAccount = priceFeedIdToPriceUpdateAccount.get(feedKey);
-      if (!priceUpdateAccount) {
-        // Try without prefix
-        for (const [k, v] of priceFeedIdToPriceUpdateAccount.entries()) {
-          console.log("  Feed map key:", k);
-          priceUpdateAccount = v;
-        }
+  for (const item of txsWithAccounts) {
+    console.log("  TX item keys:", Object.keys(item));
+    // Try all possible ways to find the account
+    if (item.priceFeedIdToPriceUpdateAccount) {
+      for (const [k, v] of item.priceFeedIdToPriceUpdateAccount.entries()) {
+        console.log("  Feed map:", k, "->", v?.toBase58?.() || v);
+        priceUpdateAccount = v;
       }
     }
   }
@@ -134,6 +130,26 @@ async function main() {
     { preflightCommitment: "confirmed" }
   );
   console.log("✅ Price posted! Sigs:", sigs);
+
+  // If we still don't have the account, extract from the transaction instructions
+  if (!priceUpdateAccount) {
+    // The price update keypair is generated internally. Let's look at the transaction
+    // to find accounts owned by the Pyth receiver program.
+    // Pyth receiver program on devnet:
+    const PYTH_RECEIVER = new PublicKey("rec5EKMGg6MxZYaMdyBps68Vw3xLhFBQCWjFGNPQuKS");
+    
+    // Search for accounts from tx signers - the price update account is a new keypair that signs the tx
+    for (const item of txsWithAccounts) {
+      if (item.signers) {
+        for (const signer of item.signers) {
+          if (signer.publicKey && !signer.publicKey.equals(wallet.publicKey)) {
+            console.log("  Found signer:", signer.publicKey.toBase58());
+            priceUpdateAccount = signer.publicKey;
+          }
+        }
+      }
+    }
+  }
   console.log("Price update account:", priceUpdateAccount?.toBase58());
 
   if (!priceUpdateAccount) {
