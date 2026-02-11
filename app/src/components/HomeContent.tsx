@@ -7,6 +7,8 @@ import MarketCard from "@/components/MarketCard";
 import StatsCard from "@/components/StatsCard";
 import { usePolling } from "@/hooks/usePolling";
 import { ChartIcon, CircleDotIcon, CoinsIcon, BotIcon } from "@/components/icons";
+import ActivityFeed from "@/components/ActivityFeed";
+import { useActivity } from "@/components/ActivityProvider";
 
 function LastUpdated({ timestamp }: { timestamp: number | null }) {
   const [, setTick] = useState(0);
@@ -44,6 +46,7 @@ export default function HomeContent() {
     return m.status === filter;
   });
 
+  const { activities: activityItems, loading: activityLoading } = useActivity();
   const openMarkets = markets.filter((m) => m.status === "open").length;
   const totalBettors = markets.reduce((acc, m) => acc + m.yesCount + m.noCount, 0);
 
@@ -103,45 +106,63 @@ export default function HomeContent() {
           <StatsCard icon={<BotIcon />} label="Total Bets" value={totalBettors} accent="gold" />
         </motion.div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-1.5 mb-8">
-          {["all", "open", "closed", "resolved"].map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${
-                filter === f
-                  ? "bg-violet-500/15 text-violet-300 border border-violet-500/25"
-                  : "bg-transparent text-zinc-500 border border-transparent hover:text-zinc-300 hover:bg-white/[0.03]"
-              }`}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
+        {/* Main content + Activity sidebar */}
+        <div className="flex gap-6">
+          {/* Left: Markets */}
+          <div className="flex-1 min-w-0">
+            {/* Filters */}
+            <div className="flex items-center gap-1.5 mb-8">
+              {["all", "open", "closed", "resolved"].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${
+                    filter === f
+                      ? "bg-violet-500/15 text-violet-300 border border-violet-500/25"
+                      : "bg-transparent text-zinc-500 border border-transparent hover:text-zinc-300 hover:bg-white/[0.03]"
+                  }`}
+                >
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Markets Grid */}
+            {marketsError && !marketsData ? (
+              <div className="text-center py-24">
+                <div className="inline-flex flex-col items-center gap-3 bg-[#0f0f18] border border-rose-500/15 rounded-2xl p-8">
+                  <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-400">✕</div>
+                  <p className="text-rose-400 text-sm">{marketsError}</p>
+                </div>
+              </div>
+            ) : filteredMarkets.length === 0 ? (
+              <div className="text-center py-24 text-zinc-600">
+                <div className="w-12 h-12 rounded-xl bg-zinc-800/50 flex items-center justify-center mb-3 mx-auto">
+                  <ChartIcon className="w-5 h-5 text-zinc-600" />
+                </div>
+                <p className="text-sm">No markets found</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredMarkets.map((market, i) => (
+                  <MarketCard key={market.publicKey} market={market} index={i} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right: Activity Feed (desktop only) */}
+          <div className="hidden lg:block w-80 shrink-0">
+            <div className="sticky top-20">
+              <ActivityFeed activities={activityItems} loading={activityLoading} />
+            </div>
+          </div>
         </div>
 
-        {/* Markets Grid */}
-        {marketsError && !marketsData ? (
-          <div className="text-center py-24">
-            <div className="inline-flex flex-col items-center gap-3 bg-[#0f0f18] border border-rose-500/15 rounded-2xl p-8">
-              <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-400">✕</div>
-              <p className="text-rose-400 text-sm">{marketsError}</p>
-            </div>
-          </div>
-        ) : filteredMarkets.length === 0 ? (
-          <div className="text-center py-24 text-zinc-600">
-            <div className="w-12 h-12 rounded-xl bg-zinc-800/50 flex items-center justify-center mb-3 mx-auto">
-              <ChartIcon className="w-5 h-5 text-zinc-600" />
-            </div>
-            <p className="text-sm">No markets found</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredMarkets.map((market, i) => (
-              <MarketCard key={market.publicKey} market={market} index={i} />
-            ))}
-          </div>
-        )}
+        {/* Activity Feed (mobile) */}
+        <div className="lg:hidden mt-8">
+          <ActivityFeed activities={activityItems} loading={activityLoading} />
+        </div>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import "./globals.css";
 import Logo from "@/components/Logo";
 import WalletProvider from "@/components/WalletProvider";
 import WalletButton from "@/components/WalletButton";
+import ActivityProvider from "@/components/ActivityProvider";
 
 export const metadata: Metadata = {
   title: "ClawBets — Prediction Markets for AI Agents",
@@ -26,6 +27,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="antialiased">
         <WalletProvider>
+        <ActivityProvider>
         <div className="min-h-screen flex flex-col">
           {/* Nav */}
           <nav className="sticky top-0 z-50 border-b border-[#1a1a2e]/60 bg-[#050507]/80 backdrop-blur-xl">
@@ -89,6 +91,7 @@ export default function RootLayout({
             </div>
           </footer>
         </div>
+        </ActivityProvider>
         </WalletProvider>
       </body>
     </html>
