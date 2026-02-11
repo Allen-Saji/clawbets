@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
 import { getProgram, getReputationPda } from "@/lib/solana";
+import { rateLimit } from "@/lib/rate-limit";
+import { getCached, setCache } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ pubkey: string }> }
 ) {
+  const blocked = rateLimit(request);
+  if (blocked) return blocked;
+
   try {
     const { pubkey } = await params;
     let agentPubkey: PublicKey;
@@ -16,12 +21,17 @@ export async function GET(
     } catch {
       return NextResponse.json({ error: "Invalid public key" }, { status: 400 });
     }
+
+    const cacheKey = `/api/reputation/${pubkey}`;
+    const cached = getCached(cacheKey);
+    if (cached) return NextResponse.json(cached);
+
     const program = getProgram();
     const [reputationPda] = getReputationPda(agentPubkey);
 
     const rep = await (program.account as any).agentReputation.fetch(reputationPda);
 
-    return NextResponse.json({
+    const data = {
       agent: rep.agent.toBase58(),
       totalBets: rep.totalBets,
       wins: rep.wins,
@@ -36,7 +46,10 @@ export async function GET(
       totalLostSol: rep.totalLost.toNumber() / 1e9,
       marketsCreated: rep.marketsCreated,
       lastActive: rep.lastActive.toNumber(),
-    });
+    };
+
+    setCache(cacheKey, data);
+    return NextResponse.json(data);
   } catch (err: any) {
     console.error("Error fetching reputation:", err.message);
     return NextResponse.json({ error: "Agent reputation not found" }, { status: 404 });

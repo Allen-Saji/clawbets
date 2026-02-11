@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
 import { getProgram } from "@/lib/solana";
+import { rateLimit } from "@/lib/rate-limit";
+import { getCached, setCache } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ pubkey: string }> }
 ) {
+  const blocked = rateLimit(request);
+  if (blocked) return blocked;
+
   try {
     const { pubkey } = await params;
     let agentPubkey: PublicKey;
@@ -16,6 +21,11 @@ export async function GET(
     } catch {
       return NextResponse.json({ error: "Invalid public key" }, { status: 400 });
     }
+
+    const cacheKey = `/api/bets/agent/${pubkey}`;
+    const cached = getCached(cacheKey);
+    if (cached) return NextResponse.json(cached);
+
     const program = getProgram();
 
     const bets = await (program.account as any).bet.all([
@@ -38,7 +48,9 @@ export async function GET(
       placedAt: b.account.placedAt.toNumber(),
     }));
 
-    return NextResponse.json({ bets: formatted, count: formatted.length });
+    const data = { bets: formatted, count: formatted.length };
+    setCache(cacheKey, data);
+    return NextResponse.json(data);
   } catch (err: any) {
     console.error("Error listing agent bets:", err.message);
     return NextResponse.json({ error: "Failed to list agent bets" }, { status: 500 });

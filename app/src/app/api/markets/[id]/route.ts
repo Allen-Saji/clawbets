@@ -1,18 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProgram, getMarketPda, getVaultPda, getConnection } from "@/lib/solana";
+import { rateLimit } from "@/lib/rate-limit";
+import { getCached, setCache } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const blocked = rateLimit(request);
+  if (blocked) return blocked;
+
   try {
     const { id } = await params;
     const marketId = parseInt(id);
     if (isNaN(marketId)) {
       return NextResponse.json({ error: "Invalid market ID" }, { status: 400 });
     }
+
+    const cacheKey = `/api/markets/${marketId}`;
+    const cached = getCached(cacheKey);
+    if (cached) return NextResponse.json(cached);
 
     const program = getProgram();
     const [marketPda] = getMarketPda(marketId);
@@ -21,7 +30,7 @@ export async function GET(
     const market = await (program.account as any).market.fetch(marketPda);
     const vaultBalance = await getConnection().getBalance(vaultPda);
 
-    return NextResponse.json({
+    const data = {
       publicKey: marketPda.toBase58(),
       vault: vaultPda.toBase58(),
       vaultBalance,
@@ -54,7 +63,10 @@ export async function GET(
       noOdds: market.totalYes.toNumber() + market.totalNo.toNumber() > 0
         ? (market.totalYes.toNumber() / (market.totalYes.toNumber() + market.totalNo.toNumber()) * 100).toFixed(1)
         : "50.0",
-    });
+    };
+
+    setCache(cacheKey, data);
+    return NextResponse.json(data);
   } catch (err: any) {
     console.error("Error fetching market:", err.message);
     return NextResponse.json({ error: "Market not found" }, { status: 404 });

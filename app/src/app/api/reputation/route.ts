@@ -1,9 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getProgram } from "@/lib/solana";
+import { rateLimit } from "@/lib/rate-limit";
+import { getCached, setCache } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const blocked = rateLimit(request);
+  if (blocked) return blocked;
+
+  const cacheKey = "/api/reputation";
+  const cached = getCached(cacheKey);
+  if (cached) return NextResponse.json(cached);
+
   try {
     const program = getProgram();
     const allReps = await (program.account as any).agentReputation.all();
@@ -26,7 +35,9 @@ export async function GET() {
         return b.totalBets - a.totalBets;
       });
 
-    return NextResponse.json({ leaderboard: formatted, count: formatted.length });
+    const data = { leaderboard: formatted, count: formatted.length };
+    setCache(cacheKey, data);
+    return NextResponse.json(data);
   } catch (err: any) {
     console.error("Error fetching leaderboard:", err.message);
     return NextResponse.json({ error: "Failed to fetch leaderboard" }, { status: 500 });

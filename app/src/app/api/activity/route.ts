@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getProgram } from "@/lib/solana";
+import { rateLimit } from "@/lib/rate-limit";
+import { getCached, setCache } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +20,14 @@ interface ActivityItem {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const blocked = rateLimit(request);
+  if (blocked) return blocked;
+
+  const cacheKey = "/api/activity";
+  const cached = getCached(cacheKey);
+  if (cached) return NextResponse.json(cached);
+
   try {
     const program = getProgram();
 
@@ -72,10 +81,13 @@ export async function GET() {
 
     activities.sort((a, b) => b.timestamp - a.timestamp);
 
-    return NextResponse.json({
+    const data = {
       activities: activities.slice(0, 50),
       count: activities.length,
-    });
+    };
+
+    setCache(cacheKey, data);
+    return NextResponse.json(data);
   } catch (err: any) {
     console.error("Error fetching activity:", err.message);
     return NextResponse.json({ error: "Failed to fetch activity" }, { status: 500 });

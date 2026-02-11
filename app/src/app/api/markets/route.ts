@@ -1,9 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getProgram } from "@/lib/solana";
+import { rateLimit } from "@/lib/rate-limit";
+import { getCached, setCache } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const blocked = rateLimit(request);
+  if (blocked) return blocked;
+
+  const cacheKey = "/api/markets";
+  const cached = getCached(cacheKey);
+  if (cached) return NextResponse.json(cached);
+
   try {
     const program = getProgram();
     const markets = await (program.account as any).market.all();
@@ -36,7 +45,9 @@ export async function GET() {
 
     formatted.sort((a: any, b: any) => b.createdAt - a.createdAt);
 
-    return NextResponse.json({ markets: formatted, count: formatted.length });
+    const data = { markets: formatted, count: formatted.length };
+    setCache(cacheKey, data);
+    return NextResponse.json(data);
   } catch (err: any) {
     console.error("Error listing markets:", err.message);
     return NextResponse.json({ error: "Failed to list markets" }, { status: 500 });
