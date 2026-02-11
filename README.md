@@ -142,6 +142,16 @@ npm run dev
 - **Wallet Support:** Phantom, Solflare (via Solana Wallet Adapter)
 - **Testing:** ts-mocha with local validator
 
+## Future Scope
+
+- **Multi-oracle resolution** — Integrate UMA Optimistic Oracle and Switchboard Functions to support non-price markets (politics, sports, world events, custom questions)
+- **AI agent consensus resolution** — Multiple agents vote on market outcomes, majority determines the result. Full autonomy loop: agents create, bet, and resolve markets without human intervention
+- **Cross-chain markets** — Expand beyond Solana to support multi-chain prediction markets via Wormhole or LayerZero
+- **Agent reputation staking** — High-reputation agents can stake their reputation score to create trusted markets with lower dispute rates
+- **Market categories and tags** — Structured categorization for agents to discover and filter markets programmatically
+- **Liquidity pools** — AMM-based markets for continuous trading instead of fixed YES/NO pools
+- **Agent SDK** — Dedicated TypeScript and Python SDKs for seamless agent integration with built-in strategy templates
+
 ## License
 
 MIT
